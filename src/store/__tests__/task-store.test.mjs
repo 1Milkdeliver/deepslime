@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -64,6 +64,70 @@ test("open resolves an explicit id or exact task name", async (t) => {
     recentEntries: [],
   });
   assert.equal((await store.open({ name: "Example task" })).taskId, f.taskId);
+});
+
+test("open by a new name creates the CONTRACT task directory", async (t) => {
+  const vaultRoot = await mkdtemp(join(tmpdir(), "slime-mold-create-"));
+  t.after(() => rm(vaultRoot, { recursive: true, force: true }));
+
+  const opened = await new TaskStore(vaultRoot).open({ name: "Weekly report" });
+  const taskDir = join(vaultRoot, "slime-mold", "tasks", opened.taskId);
+
+  assert.match(opened.taskId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  assert.deepEqual(opened.state, { content: "" });
+  assert.deepEqual(opened.recentEntries, []);
+  assert.deepEqual(JSON.parse(await readFile(join(taskDir, "task.json"), "utf8")), {
+    id: opened.taskId,
+    name: "Weekly report",
+    status: "active",
+  });
+  assert.equal(await readFile(join(taskDir, "state.md"), "utf8"), "");
+  assert.deepEqual(await readdir(join(taskDir, "log")), []);
+});
+
+test("open by name reopens the exact existing task instead of creating another", async (t) => {
+  const vaultRoot = await mkdtemp(join(tmpdir(), "slime-mold-reopen-name-"));
+  t.after(() => rm(vaultRoot, { recursive: true, force: true }));
+  const store = new TaskStore(vaultRoot);
+
+  const created = await store.open({ name: "Exact weekly report" });
+  await store.checkpoint(created.taskId, { content: "existing state" });
+  const reopened = await new TaskStore(vaultRoot).open({ name: "Exact weekly report" });
+
+  assert.equal(reopened.taskId, created.taskId);
+  assert.deepEqual(reopened.state, { content: "existing state" });
+  assert.deepEqual(
+    await readdir(join(vaultRoot, "slime-mold", "tasks")),
+    [created.taskId],
+  );
+});
+
+test("open by a missing id keeps the not-found behavior", async (t) => {
+  const vaultRoot = await mkdtemp(join(tmpdir(), "slime-mold-missing-id-"));
+  t.after(() => rm(vaultRoot, { recursive: true, force: true }));
+  const taskId = "99999999-9999-4999-8999-999999999999";
+
+  await assert.rejects(
+    () => new TaskStore(vaultRoot).open({ id: taskId }),
+    new RegExp(`Task not found: ${taskId}`),
+  );
+});
+
+test("a task created by name can immediately record and checkpoint", async (t) => {
+  const vaultRoot = await mkdtemp(join(tmpdir(), "slime-mold-create-write-"));
+  t.after(() => rm(vaultRoot, { recursive: true, force: true }));
+  const store = new TaskStore(vaultRoot);
+  const created = await store.open({ name: "Writable weekly report" });
+
+  const recorded = await store.record(
+    connectionFor(created.taskId),
+    content({ summary: "created task is writable", payload_ref: null }),
+  );
+  await store.checkpoint(created.taskId, { content: "ready for session B" });
+
+  const reopened = await new TaskStore(vaultRoot).open({ id: created.taskId });
+  assert.deepEqual(reopened.state, { content: "ready for session B" });
+  assert.deepEqual(reopened.recentEntries.map((entry) => entry.id), [recorded.id]);
 });
 
 test("record owns identity and provenance and returns the generated id", async (t) => {

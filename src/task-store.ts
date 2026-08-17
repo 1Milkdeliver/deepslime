@@ -1,4 +1,5 @@
 import type { MemoryEntry } from "./task-schema.js";
+import { randomUUID } from "node:crypto";
 import { mkdir, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
@@ -38,8 +39,12 @@ export class TaskStore {
   }
 
   async open(task: TaskIdentifier): Promise<OpenTaskResult> {
-    const taskId = "id" in task ? task.id : await this.findTaskIdByName(task.name);
+    const taskId = "id" in task ? task.id : await this.findOrCreateTaskIdByName(task.name);
     assertSafeTaskId(taskId);
+
+    // Preserve the explicit-id not-found contract instead of leaking the
+    // canonical lock's realpath ENOENT for a directory that does not exist.
+    if ("id" in task) await this.readMetadata(taskId);
 
     return withTaskLock(this.taskDir(taskId), async () => {
       await this.readMetadata(taskId);
@@ -129,12 +134,39 @@ export class TaskStore {
     }
   }
 
-  private async findTaskIdByName(name: string): Promise<string> {
+  private async findOrCreateTaskIdByName(name: string): Promise<string> {
+    await mkdir(this.tasksRoot, { recursive: true });
+
+    // Name resolution and creation share the canonical tasks-root lock so two
+    // stores (including stores reached through vault aliases) cannot create
+    // duplicate tasks for the same previously unseen name.
+    return withTaskLock(this.tasksRoot, async () => {
+      const existingTaskId = await this.findTaskIdByName(name);
+      if (existingTaskId !== undefined) return existingTaskId;
+
+      const taskId = randomUUID();
+      assertSafeTaskId(taskId);
+      const taskDir = this.taskDir(taskId);
+      await mkdir(taskDir, { recursive: true });
+
+      await withTaskLock(taskDir, async () => {
+        await mkdir(join(taskDir, "log"), { recursive: true });
+        await atomicReplace(this.statePath(taskId), "");
+        await atomicReplace(
+          this.metadataPath(taskId),
+          `${JSON.stringify({ id: taskId, name, status: "active" }, null, 2)}\n`,
+        );
+      });
+      return taskId;
+    });
+  }
+
+  private async findTaskIdByName(name: string): Promise<string | undefined> {
     let directories;
     try {
       directories = await readdir(this.tasksRoot, { withFileTypes: true });
     } catch (error) {
-      if (isErrorCode(error, "ENOENT")) throw new Error(`Task not found by name: ${name}`);
+      if (isErrorCode(error, "ENOENT")) return undefined;
       throw error;
     }
 
@@ -144,7 +176,7 @@ export class TaskStore {
       const metadata = await this.readMetadata(directory.name);
       if (metadata.name === name) matches.push(directory.name);
     }
-    if (matches.length === 0) throw new Error(`Task not found by name: ${name}`);
+    if (matches.length === 0) return undefined;
     if (matches.length > 1) throw new Error(`Task name is ambiguous: ${name}`);
     return matches[0];
   }
