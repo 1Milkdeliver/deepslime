@@ -2,8 +2,11 @@
   "name": "slime-mold",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pretest": "tsc --noEmit false --outDir .test-dist",
+    "test": "node --test \"src/**/__tests__/*.test.mjs\" \"tests/*.test.mjs\""
   },
   "devDependencies": {
     "typescript": "^5.9.2"
