@@ -204,6 +204,7 @@ export async function runBench({ openSamples = OPEN_SAMPLES } = {}) {
       storageLatencyDifferenceMs: Number((withTiming.meanMs - withoutTiming.meanMs).toFixed(3)),
       storageLatencyRatio: Number((withTiming.meanMs / withoutTiming.meanMs).toFixed(3)),
       tokenEstimateMethod: `ceil(serialized context characters / ${TOKEN_CHARS})`,
+      targetAssessment: "not asserted: SPEC target is end-to-end, while P0 benchmark is storage-only",
     };
 
     const falseLoading = await measureFalseLoadRate(store, vaultRoot);
