@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "pretest": "tsc --noEmit false --outDir .test-dist",
-    "test": "node --test \"src/**/__tests__/*.test.mjs\" \"tests/*.test.mjs\""
+    "test": "node --test \"src/**/__tests__/*.test.mjs\" \"tests/*.test.mjs\"",
+    "verify": "npm run pretest && node scripts/verify.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.2"
