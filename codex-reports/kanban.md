@@ -19,9 +19,20 @@
 |---|---|---|---|---|
 | W5 MCP 工具层 | 4 工具串联校验+provenance+存储 | src/mcp/ | ✅ 验收通过 | 测试 21/21 全量通过 |
 | W6 集成验证 | 端到端闭环脚本 | scripts/verify.mjs | ✅ 验收通过 | `npm run verify` 跑通最小闭环 |
-| W7 交叉审查 | 独立审 W1 存储层 | codex-reports/w7-review.md | 🔄 进行中 | |
+| W7 交叉审查 | 独立审 W1 存储层 | codex-reports/w7-review.md | ✅ 完成 | **结论:不可合并**(3C+2M+1m,全部成立) |
 
 **里程碑:🏁 P0 最小闭环验收门达成**(create→open→record→checkpoint→close→reopen→resume 全链路通过)
+
+## R1 修复轮(2026-08-17)
+
+| 缺陷 | 严重度 | 状态 | 备注 |
+|---|---|---|---|
+| C1 截断尾日志固化损坏 | critical | 🔄 修复中 | pwsh-30 |
+| C2 锁键路径别名 | critical | 🔄 修复中 | 同上 |
+| C3 存储层无可信边界 | critical | 🔄 修复中 | 签名变化牵连 W5 |
+| M1 无 fsync 持久化屏障 | major | 🔄 修复中 | 同上 |
+| M2 重放只验 schema_version | major | 🔄 修复中 | 同上 |
+| m1 O(n²) I/O | minor | ⏳ P1 | 不阻塞 |
 
 ## 波 3(待启动)
 

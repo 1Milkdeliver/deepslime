@@ -2,33 +2,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { MemoryEntry } from "../src/task-schema.js";
-import {
-  TaskStore,
-  type OpenTaskResult,
-  type TaskIdentifier,
-  type TaskState,
-} from "../src/task-store.js";
+import { TaskStore } from "../src/task-store.js";
+import type { AuthenticatedConnection } from "../src/prov/index.js";
 import {
   makeWeeklyReportMemories,
   type RecordMemoryEntry,
 } from "./fixtures/weekly-report-memory.js";
 
-/**
- * CONTRACT.md section 3 surface.
- *
- * TODO(W1): remove this compatibility view when src/task-store.ts replaces its
- * placeholder `record(MemoryEntry): void` signature with the contract signature.
- */
-interface ContractTaskStore {
-  open(task: TaskIdentifier): Promise<OpenTaskResult>;
-  record(entry: RecordMemoryEntry): Promise<{ id: string }>;
-  checkpoint(taskId: string, state: TaskState): Promise<void>;
-  close(taskId: string): Promise<void>;
-}
-
-function newContractStore(): ContractTaskStore {
-  return new TaskStore() as unknown as ContractTaskStore;
-}
+const testConnection: AuthenticatedConnection = {
+  agent: "dsh",
+  sessionId: "scenario1-session-a",
+  taskId: "", // filled per task after open
+  confidence: "high",
+};
 
 function assertServerProvenance(entry: MemoryEntry): void {
   assert.ok(entry.id, "recorded entry must have a server-generated id");
@@ -58,14 +44,15 @@ test("场景一：新会话按 task id 恢复周报状态和最近记忆", async
   ].join("\n");
 
   // Session A: create/open by name, record memories, checkpoint, then close.
-  const sessionA = newContractStore();
+  const sessionA = new TaskStore();
   const created = await sessionA.open({ name: taskName });
   assert.ok(created.taskId, "opening a new task by name must return its id");
+  testConnection.taskId = created.taskId;
 
   const fixtureEntries = makeWeeklyReportMemories(created.taskId);
   const recordedIds: string[] = [];
   for (const entry of fixtureEntries) {
-    const result = await sessionA.record(entry);
+    const result = await sessionA.record(testConnection, entry);
     assert.ok(result.id, "record must return the stored entry id");
     recordedIds.push(result.id);
   }
@@ -74,7 +61,7 @@ test("场景一：新会话按 task id 恢复周报状态和最近记忆", async
   await sessionA.close(created.taskId);
 
   // Session B: a fresh store instance may only use the explicit task id.
-  const sessionB = newContractStore();
+  const sessionB = new TaskStore();
   const restored = await sessionB.open({ id: created.taskId });
 
   assert.equal(restored.taskId, created.taskId);

@@ -1,6 +1,11 @@
 import type { MemoryEntry } from "./task-schema.js";
 import { mkdir, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import {
+  buildEntry,
+  type AuthenticatedConnection,
+  type ClientContent,
+} from "./prov/index.js";
 import { atomicReplace, readTextIfPresent } from "./store/files.js";
 import {
   appendCheckpoint,
@@ -39,7 +44,7 @@ export class TaskStore {
     return withTaskLock(this.taskDir(taskId), async () => {
       await this.readMetadata(taskId);
       const state = await this.recoverState(taskId);
-      const stored = await readEntries(this.entriesPath(taskId));
+      const stored = await readEntries(this.entriesPath(taskId), taskId);
       const recentEntries = stored
         .slice(-TaskStore.RECENT_ENTRY_LIMIT)
         .map(stripSchemaVersion);
@@ -47,19 +52,21 @@ export class TaskStore {
     });
   }
 
-  async record(entry: MemoryEntry): Promise<void> {
-    assertMemoryEntry(entry);
-    assertSafeTaskId(entry.task_id);
-    const taskDir = this.taskDir(entry.task_id);
+  async record(
+    connection: AuthenticatedConnection,
+    content: ClientContent,
+  ): Promise<{ id: string }> {
+    const entry = buildEntry(connection, content);
+    assertSafeTaskId(connection.taskId);
+    const taskDir = this.taskDir(connection.taskId);
 
     await withTaskLock(taskDir, async () => {
-      await this.readMetadata(entry.task_id);
+      await this.readMetadata(connection.taskId);
       await assertSafePayloadRef(taskDir, entry.payload_ref);
-      const existing = await readEntries(this.entriesPath(entry.task_id));
-      if (existing.some((candidate) => candidate.id === entry.id)) return;
       await mkdir(join(taskDir, "log"), { recursive: true });
-      await appendEntry(this.entriesPath(entry.task_id), entry);
+      await appendEntry(this.entriesPath(connection.taskId), entry);
     });
+    return { id: entry.id };
   }
 
   async checkpoint(taskId: string, state: TaskState): Promise<void> {
@@ -157,34 +164,6 @@ export class TaskStore {
 function stripSchemaVersion(entry: StoredMemoryEntry): MemoryEntry {
   const { schema_version: _schemaVersion, ...memoryEntry } = entry;
   return memoryEntry;
-}
-
-function assertMemoryEntry(entry: MemoryEntry): void {
-  if (!isPlainRecord(entry)) throw new Error("Invalid memory entry");
-  const keys = [
-    "id", "task_id", "agent", "session_id", "timestamp", "type", "layer", "kind",
-    "summary", "payload_ref", "confidence", "source_scope",
-  ];
-  if (Object.keys(entry).length !== keys.length || keys.some((key) => !(key in entry))) {
-    throw new Error("Memory entry must use the strict 12-field schema");
-  }
-  for (const field of ["id", "task_id", "agent", "session_id", "timestamp", "summary"] as const) {
-    if (typeof entry[field] !== "string" || entry[field].length === 0) {
-      throw new Error(`Invalid memory entry field: ${field}`);
-    }
-  }
-  if (!new Set(["decision", "artifact", "observation", "question", "fact"]).has(entry.type)) {
-    throw new Error("Invalid memory entry type");
-  }
-  if (!new Set(["fact", "draft"]).has(entry.layer)) throw new Error("Invalid memory layer");
-  if (!new Set(["reference", "state"]).has(entry.kind)) throw new Error("Invalid memory kind");
-  if (!new Set(["high", "medium", "low"]).has(entry.confidence)) {
-    throw new Error("Invalid memory confidence");
-  }
-  if (entry.source_scope !== "personal") throw new Error("source_scope must be personal in P0");
-  if (entry.payload_ref !== null && typeof entry.payload_ref !== "string") {
-    throw new Error("Invalid payload_ref");
-  }
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {

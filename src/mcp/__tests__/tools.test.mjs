@@ -137,3 +137,28 @@ test("strict validation rejects unknown fields and unsafe payloads before storag
 
   await assert.rejects(readFile(join(f.taskDir, "log", "entries.jsonl"), "utf8"));
 });
+
+test("record delegates trusted connection and content to the store boundary", async (t) => {
+  const f = await fixture();
+  t.after(() => rm(f.vaultRoot, { recursive: true, force: true }));
+  const calls = [];
+  const store = {
+    async record(receivedConnection, receivedContent) {
+      calls.push([receivedConnection, receivedContent]);
+      return { id: "server-generated-id" };
+    },
+  };
+  const tools = createMcpTools({ vaultRoot: f.vaultRoot, store });
+  const input = {
+    type: "observation",
+    layer: "draft",
+    kind: "reference",
+    summary: "validated content",
+    payload_ref: null,
+  };
+
+  assert.deepEqual(await byName(tools, "record").handler(input, connection), {
+    id: "server-generated-id",
+  });
+  assert.deepEqual(calls, [[connection, input]]);
+});

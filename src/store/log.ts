@@ -1,4 +1,5 @@
 import type { MemoryEntry } from "../task-schema.js";
+import { validateMemoryEntry } from "../validate/index.js";
 import { atomicAppendJsonLine, parseJsonLines, readTextIfPresent } from "./files.js";
 
 export interface StoredMemoryEntry extends MemoryEntry {
@@ -11,10 +12,13 @@ export interface CheckpointRecord {
   content: string;
 }
 
-export async function readEntries(path: string): Promise<StoredMemoryEntry[]> {
+export async function readEntries(
+  path: string,
+  expectedTaskId: string,
+): Promise<StoredMemoryEntry[]> {
   const text = await readTextIfPresent(path);
   if (text === undefined) return [];
-  return parseJsonLines(path, text).map(parseStoredEntry);
+  return parseJsonLines(path, text).map((value) => parseStoredEntry(value, expectedTaskId, path));
 }
 
 export async function appendEntry(path: string, entry: MemoryEntry): Promise<void> {
@@ -45,11 +49,21 @@ export async function appendCheckpoint(path: string, content: string): Promise<v
   } satisfies CheckpointRecord);
 }
 
-function parseStoredEntry(value: unknown): StoredMemoryEntry {
-  if (!isRecord(value) || value.schema_version !== 1) {
-    throw new Error("Unsupported or missing memory entry schema_version");
+function parseStoredEntry(
+  value: unknown,
+  expectedTaskId: string,
+  path: string,
+): StoredMemoryEntry {
+  let entry;
+  try {
+    entry = validateMemoryEntry(value);
+  } catch (error) {
+    throw new Error(`Invalid memory entry record in ${path}`, { cause: error });
   }
-  return value as unknown as StoredMemoryEntry;
+  if (entry.task_id !== expectedTaskId) {
+    throw new Error(`Memory entry task_id does not match task: ${expectedTaskId}`);
+  }
+  return entry;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

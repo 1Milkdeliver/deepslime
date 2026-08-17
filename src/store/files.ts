@@ -1,6 +1,21 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
+
+export interface AtomicFileHandle {
+  writeFile(data: string, encoding: "utf8"): Promise<void>;
+  sync(): Promise<void>;
+  close(): Promise<void>;
+}
+
+export interface AtomicFileOperations {
+  mkdir(path: string, options: { recursive: true }): Promise<unknown>;
+  open(path: string, flags: string): Promise<AtomicFileHandle>;
+  rename(oldPath: string, newPath: string): Promise<void>;
+  rm(path: string, options: { force: true }): Promise<void>;
+}
+
+const defaultFileOperations: AtomicFileOperations = { mkdir, open, rename, rm };
 
 export async function readTextIfPresent(path: string): Promise<string | undefined> {
   try {
@@ -11,14 +26,26 @@ export async function readTextIfPresent(path: string): Promise<string | undefine
   }
 }
 
-export async function atomicReplace(path: string, content: string): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  const temporary = join(dirname(path), `.${randomUUID()}.tmp`);
+export async function atomicReplace(
+  path: string,
+  content: string,
+  operations: AtomicFileOperations = defaultFileOperations,
+): Promise<void> {
+  const parent = dirname(path);
+  await operations.mkdir(parent, { recursive: true });
+  const temporary = join(parent, `.${randomUUID()}.tmp`);
+  let handle: AtomicFileHandle | undefined;
   try {
-    await writeFile(temporary, content, { encoding: "utf8", flag: "wx" });
-    await rename(temporary, path);
+    handle = await operations.open(temporary, "wx");
+    await handle.writeFile(content, "utf8");
+    await handle.sync();
+    await handle.close();
+    handle = undefined;
+    await operations.rename(temporary, path);
+    await syncDirectoryIfSupported(parent, operations);
   } finally {
-    await rm(temporary, { force: true });
+    await handle?.close();
+    await operations.rm(temporary, { force: true });
   }
 }
 
@@ -28,8 +55,30 @@ export async function atomicReplace(path: string, content: string): Promise<void
  */
 export async function atomicAppendJsonLine(path: string, value: unknown): Promise<void> {
   const previous = (await readTextIfPresent(path)) ?? "";
-  const separator = previous.length > 0 && !previous.endsWith("\n") ? "\n" : "";
-  await atomicReplace(path, `${previous}${separator}${JSON.stringify(value)}\n`);
+  const confirmed = previous.endsWith("\n")
+    ? previous
+    : previous.slice(0, previous.lastIndexOf("\n") + 1);
+  await atomicReplace(path, `${confirmed}${JSON.stringify(value)}\n`);
+}
+
+async function syncDirectoryIfSupported(
+  path: string,
+  operations: AtomicFileOperations,
+): Promise<void> {
+  let directory: AtomicFileHandle | undefined;
+  try {
+    directory = await operations.open(path, "r");
+    await directory.sync();
+  } catch (error) {
+    if (!isUnsupportedDirectorySync(error)) throw error;
+  } finally {
+    await directory?.close();
+  }
+}
+
+function isUnsupportedDirectorySync(error: unknown): boolean {
+  return ["EACCES", "EBADF", "EINVAL", "EISDIR", "ENOSYS", "ENOTSUP", "EPERM"]
+    .some((code) => isErrorCode(error, code));
 }
 
 export function parseJsonLines(path: string, text: string): unknown[] {

@@ -1,9 +1,6 @@
 import { resolve } from "node:path";
 
-import {
-  buildEntry,
-  type AuthenticatedConnection,
-} from "../prov/index.js";
+import type { AuthenticatedConnection } from "../prov/index.js";
 import { TaskStore, type OpenTaskResult } from "../task-store.js";
 import {
   ValidationError,
@@ -128,9 +125,7 @@ export function createMcpTools(dependencies: McpToolDependencies): McpToolDefini
           input,
           resolve(tasksRoot, connection.taskId),
         );
-        const entry = buildEntry(connection, content);
-        await store.record(entry);
-        return { id: entry.id };
+        return store.record(connection, content);
       },
     },
     {

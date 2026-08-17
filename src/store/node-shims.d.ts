@@ -3,6 +3,12 @@ declare module "node:crypto" {
 }
 
 declare module "node:fs/promises" {
+  export interface FileHandle {
+    close(): Promise<void>;
+    sync(): Promise<void>;
+    writeFile(data: string, encoding: "utf8"): Promise<void>;
+  }
+
   export interface Dirent {
     name: string;
     isDirectory(): boolean;
@@ -10,6 +16,7 @@ declare module "node:fs/promises" {
 
   export function access(path: string): Promise<void>;
   export function mkdir(path: string, options?: { recursive?: boolean }): Promise<string | undefined>;
+  export function open(path: string, flags: string): Promise<FileHandle>;
   export function readFile(path: string, encoding: "utf8"): Promise<string>;
   export function readdir(path: string, options: { withFileTypes: true }): Promise<Dirent[]>;
   export function realpath(path: string): Promise<string>;
@@ -33,4 +40,5 @@ declare module "node:path" {
 
 declare const process: {
   cwd(): string;
+  platform: string;
 };

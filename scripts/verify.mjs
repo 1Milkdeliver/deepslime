@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { buildEntry } from "../.test-dist/prov/index.js";
 import { TaskStore } from "../.test-dist/task-store.js";
 
 const TASK_ID = "60000000-0000-4000-8000-000000000006";
@@ -45,7 +44,7 @@ export async function runLifecycleVerification({ log = console.log } = {}) {
     assert.equal(openedA.recentEntries.length, 0);
     step("session A open", `state=${JSON.stringify(openedA.state.content.trim())}`);
 
-    const recorded = buildEntry(
+    const recorded = await sessionA.record(
       {
         agent: "dsh",
         sessionId: "w6-session-a",
@@ -60,7 +59,6 @@ export async function runLifecycleVerification({ log = console.log } = {}) {
         payload_ref: null,
       },
     );
-    await sessionA.record(recorded);
     step("session A record", `entry ${recorded.id}`);
 
     await sessionA.checkpoint(TASK_ID, { content: CHECKPOINT });
@@ -78,7 +76,8 @@ export async function runLifecycleVerification({ log = console.log } = {}) {
     assert.equal(reopened.taskId, TASK_ID);
     assert.deepEqual(reopened.state, { content: CHECKPOINT });
     assert.equal(reopened.recentEntries.length, 1);
-    assert.deepEqual(reopened.recentEntries[0], recorded);
+    assert.equal(reopened.recentEntries[0].id, recorded.id);
+    assert.equal(reopened.recentEntries[0].summary, "Session A completed the initial lifecycle work.");
     assert.equal(reopened.recentEntries[0].session_id, "w6-session-a");
     step(
       "session B reopen",
