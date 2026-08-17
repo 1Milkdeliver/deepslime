@@ -92,21 +92,29 @@ async function addMemories(store, task) {
   await store.checkpoint(task.id, { content: STATE(task) });
 }
 
-async function measureFalseLoadRate(store) {
+async function measureFalseLoadRate(store, vaultRoot) {
   const probes = TASKS.flatMap((task) => [
     `${task.name} unrelated`,
     task.name.replace("benchmark", "bench mark"),
   ]);
   let accepted = 0;
   let rejected = 0;
+  const benchmarkTaskIds = new Set(TASKS.map((task) => task.id));
 
   for (const name of probes) {
-    try {
-      await store.open({ name });
+    const opened = await store.open({ name });
+    if (benchmarkTaskIds.has(opened.taskId)) {
       accepted += 1;
-    } catch (error) {
-      assert.match(String(error), /Task not found by name/);
+    } else {
+      // Current P0 creates an empty task for a new exact name. This counts as
+      // rejecting unrelated memory, because no existing task was recalled.
+      assert.deepEqual(opened.state, { content: "" });
+      assert.equal(opened.recentEntries.length, 0);
       rejected += 1;
+      await rm(join(vaultRoot, "slime-mold", "tasks", opened.taskId), {
+        recursive: true,
+        force: true,
+      });
     }
   }
 
@@ -118,7 +126,7 @@ async function measureFalseLoadRate(store) {
   }
 
   return {
-    mode: "P0 exact-name simulation (no search API)",
+    mode: "P0 exact-name simulation (new names may create empty tasks; no search API)",
     irrelevantProbes: probes.length,
     incorrectlyAccepted: accepted,
     correctlyRejected: rejected,
@@ -198,7 +206,7 @@ export async function runBench({ openSamples = OPEN_SAMPLES } = {}) {
       tokenEstimateMethod: `ceil(serialized context characters / ${TOKEN_CHARS})`,
     };
 
-    const falseLoading = await measureFalseLoadRate(store);
+    const falseLoading = await measureFalseLoadRate(store, vaultRoot);
     const reattach = await measureReattachSuccess(vaultRoot);
     const passed = falseLoading.passed && reattach.passed;
     assert.equal(

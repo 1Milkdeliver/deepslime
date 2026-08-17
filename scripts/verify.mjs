@@ -6,7 +6,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { TaskStore } from "../.test-dist/task-store.js";
 
-const TASK_ID = "60000000-0000-4000-8000-000000000006";
 const TASK_NAME = "W6 lifecycle verification";
 const CHECKPOINT = [
   "# W6 continuation state",
@@ -22,25 +21,20 @@ const CHECKPOINT = [
  */
 export async function runLifecycleVerification({ log = console.log } = {}) {
   const vaultRoot = await mkdtemp(join(tmpdir(), "slime-mold-w6-"));
-  const taskDir = join(vaultRoot, "slime-mold", "tasks", TASK_ID);
 
   const step = (name, detail) => log(`[ok] ${name}: ${detail}`);
 
   try {
-    // TaskStore currently opens existing tasks, so creation initializes the
-    // CONTRACT.md directory shape before the first open.
+    // W8: open({name}) creates a missing task, initializing task.json/state.md/log.
     const sessionA = new TaskStore(vaultRoot);
-    await mkdir(join(taskDir, "log"), { recursive: true });
-    await writeFile(
-      join(taskDir, "task.json"),
-      `${JSON.stringify({ id: TASK_ID, name: TASK_NAME, status: "active" }, null, 2)}\n`,
-      "utf8",
-    );
-    await writeFile(join(taskDir, "state.md"), "New task; no work recorded yet.\n", "utf8");
-    step("create", `task ${TASK_ID} in temporary vault ${vaultRoot}`);
+    const created = await sessionA.open({ name: TASK_NAME });
+    const taskId = created.taskId;
+    assert.ok(taskId, "open by name must create and return a task id");
+    const taskDir = join(vaultRoot, "slime-mold", "tasks", taskId);
+    step("create", `task "${TASK_NAME}" (${taskId}) in temporary vault ${vaultRoot}`);
 
-    const openedA = await sessionA.open({ id: TASK_ID });
-    assert.equal(openedA.taskId, TASK_ID);
+    const openedA = await sessionA.open({ id: taskId });
+    assert.equal(openedA.taskId, taskId);
     assert.equal(openedA.recentEntries.length, 0);
     step("session A open", `state=${JSON.stringify(openedA.state.content.trim())}`);
 
@@ -48,7 +42,7 @@ export async function runLifecycleVerification({ log = console.log } = {}) {
       {
         agent: "dsh",
         sessionId: "w6-session-a",
-        taskId: TASK_ID,
+        taskId,
         confidence: "high",
       },
       {
@@ -61,10 +55,10 @@ export async function runLifecycleVerification({ log = console.log } = {}) {
     );
     step("session A record", `entry ${recorded.id}`);
 
-    await sessionA.checkpoint(TASK_ID, { content: CHECKPOINT });
+    await sessionA.checkpoint(taskId, { content: CHECKPOINT });
     step("session A checkpoint", `${CHECKPOINT.length} characters persisted`);
 
-    await sessionA.close(TASK_ID);
+    await sessionA.close(taskId);
     const closedMetadata = JSON.parse(await readFile(join(taskDir, "task.json"), "utf8"));
     assert.equal(closedMetadata.status, "dormant");
     step("session A close", "lifecycle status=dormant");
@@ -72,8 +66,8 @@ export async function runLifecycleVerification({ log = console.log } = {}) {
     // A separate instance represents a new authenticated client session. It
     // resumes only with the explicit id and reads everything from disk.
     const sessionB = new TaskStore(vaultRoot);
-    const reopened = await sessionB.open({ id: TASK_ID });
-    assert.equal(reopened.taskId, TASK_ID);
+    const reopened = await sessionB.open({ id: taskId });
+    assert.equal(reopened.taskId, taskId);
     assert.deepEqual(reopened.state, { content: CHECKPOINT });
     assert.equal(reopened.recentEntries.length, 1);
     assert.equal(reopened.recentEntries[0].id, recorded.id);
@@ -85,7 +79,7 @@ export async function runLifecycleVerification({ log = console.log } = {}) {
     );
 
     step("verify", "create -> record -> checkpoint -> close -> reopen -> resume passed");
-    return { taskId: TASK_ID, recordedId: recorded.id, state: reopened.state.content };
+    return { taskId, recordedId: recorded.id, state: reopened.state.content };
   } finally {
     await rm(vaultRoot, { recursive: true, force: true });
   }
