@@ -75,18 +75,18 @@ export class SessionAggregator {
     );
   }
 
-  /** 分组键:标题种子归一化(小写 + 空白折叠 + 截断),用于聚合。 */
+  /** 分组键:标题种子归一化(小写 + 空白折叠 + 剥离零宽字符 + 截断)。 */
   private groupKey(session: IngestSession): string {
-    const seed = session.title.trim() || firstUserText(session);
+    const seed = cleanTitle(session);
     const normalized = seed.replace(/\s+/g, " ").trim().toLowerCase();
     return normalized.length === 0
       ? `untitled-${session.source}-${session.sessionId.slice(0, 8)}`
       : normalized.slice(0, TITLE_CAP);
   }
 
-  /** 展示名:组内首个会话的原始标题(截断);空则用分组键。 */
+  /** 展示名:组内首个会话的原始标题(剥离零宽字符 + 截断);空则用分组键。 */
   private displayName(first: IngestSession, groupKey: string): string {
-    const seed = first.title.trim() || firstUserText(first);
+    const seed = cleanTitle(first);
     const normalized = seed.replace(/\s+/g, " ").trim();
     return normalized.length === 0 ? groupKey : normalized.slice(0, TITLE_CAP);
   }
@@ -177,4 +177,22 @@ function confidenceFor(
   if (event.type === "decision" || event.type === "artifact") return "high";
   if (session.agent === "claude-code") return "medium";
   return "low";
+}
+
+/**
+ * 剥离文本中的零宽字符与不可见格式字符。
+ * 某些会话把零宽文本(U+200B/200C/200D/2060/FEFF 等)当作消息内容,
+ * 作为任务名毫无意义且难以阅读。
+ */
+export function stripZeroWidth(value: string): string {
+  return value.replace(
+    // 零宽字符 + 不可见格式字符 + 双向文本控制符
+    /[\u200B-\u200F\u2060-\u206F\uFEFF\u00AD\u034F\u180E\u202A-\u202E]/gu,
+    "",
+  );
+}
+
+/** 任务名种子:标题优先,否则首个用户消息;统一剥离零宽字符。 */
+function cleanTitle(session: IngestSession): string {
+  return stripZeroWidth(session.title.trim() || firstUserText(session));
 }

@@ -10,7 +10,7 @@
  * 用法:
  *   node scripts/emit-graph.mjs --vault <vault-root>
  */
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -98,6 +98,8 @@ function sessionTopic(sessionId) {
 async function emitGraph(vaultRoot) {
   const tasksRoot = join(vaultRoot, "slime-mold", "tasks");
   const graphRoot = join(vaultRoot, "菌落");
+  // 先清空旧输出,避免任务名变更后残留旧文件名(全部可重建)。
+  await rm(graphRoot, { recursive: true, force: true });
   await mkdir(graphRoot, { recursive: true });
 
   const taskDirs = await listTaskDirs(tasksRoot);
