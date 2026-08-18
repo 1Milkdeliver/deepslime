@@ -64,3 +64,42 @@
 |---|---|---|
 | open 创建语义 | open 支持不存在任务时创建(场景一"会话 A 创建"缺口) | ⏳ |
 | 指标评测 | 接续时间/误加载率/重回成功率 | ⏳ |
+
+## 波 4(2026-08-17,摄入管线 + Obsidian 面板)
+
+| 模块 | 内容 | 目录 | 状态 |
+|---|---|---|---|
+| R2 Obsidian 面板方案 | 溯源面板研究报告(SPEC 6.1/6.2 验收) | codex-reports/r2-obsidian-panel.md | ✅ 已落盘 |
+| I1 归一化模型 | 三源共同中间格式 IngestSession/IngestEvent | src/ingest/types.ts | ✅ 验收通过 |
+| I2 会话→任务聚合 | 标题种子+归一化+高光提取+信号排序 | src/ingest/aggregate.ts | ✅ 验收通过 |
+| I3 TaskStore 写入 | open 创建+record 写入+自持幂等清单 | src/ingest/writer.ts | ✅ 验收通过 |
+| I4 管线主流程 | 三源解析→聚合→写入→sm-config 覆盖诚实区 | src/ingest/index.ts | ✅ 验收通过 |
+| I5 Codex 解析器 | 流式 JSONL + event_msg/response_item + developer 过滤 | src/ingest/parsers/codex.ts | ✅ 验收通过 |
+| I6 DSH 解析器 | zstd 解码(fzstd)+ DSH 事件流格式 | src/ingest/parsers/dsh.ts | ✅ 验收通过 |
+| I7 Edge 解析器 | SQLite 只读(node:sqlite)+ bigint 时间戳 + 浏览会话切分 | src/ingest/parsers/edge.ts | ✅ 验收通过 |
+| I8 CLI 入口 | scripts/ingest.mjs | scripts/ingest.mjs | ✅ 验收通过 |
+| I9 测试 | 聚合 6 例 + 管线端到端 2 例 | src/ingest/__tests__/ | ✅ 40/40 全绿 |
+| O1 Obsidian 插件骨架 | manifest/main/view/store-reader/构建配置 | obsidian/slime-mold-panel/ | ✅ 已写,构建待 Obsidian 环境 |
+
+**波 4 真实数据验证(2026-08-17):**
+
+| 数据源 | 位置 | 会话 | 事件 |
+|---|---|---|---|
+| Codex | C:\Users\Huawei\.codex\sessions | 98 | 66,718 |
+| DSH | C:\Users\Huawei\.dsh\sessions\--D-Deepseek~0020Harness-- | 7 | 4,849 |
+| Edge | ...\Edge\User Data\Default\History | 139 浏览会话 | 5,279 |
+
+- 聚合 66 个任务候选 → 写入 vault(D:\Deepseek Harness\slime-mold\vault\slime-mold\tasks)
+- 幂等验证:同 key 重跑,14886 条跳过,仅增量写入
+- 覆盖诚实区:sm-config.json 正确列出已接入/未接入(ChatGPT/Cursor 待提供)
+- 真实数据发现并修复:Codex 3GB 超大文件(流式读取)、event_msg 消息格式、developer 角色过滤、DSH 事件流真实结构、Edge Chromium 时间戳 bigint 溢出
+
+**里程碑:🏁 摄入管线端到端跑通(三源 → 聚合 → TaskStore → 覆盖诚实区 → Obsidian 面板数据就绪)**
+
+**环境状态:✅ 已恢复(pwsh/glob/grep 正常);@types/node 已安装;40/40 测试 + verify 全绿。**
+| I8 CLI 入口 | scripts/ingest.mjs | scripts/ingest.mjs | ✅ 已写 |
+| I9 测试 | 聚合 6 例 + 管线端到端 2 例 | src/ingest/__tests__/ | ⚠️ 待跑 |
+
+**环境状态:⚠️ pwsh/glob/grep 全部崩溃(0xC0000142),typecheck/测试待环境恢复后执行。**
+**数据源位置:Edge History 已确认(C:\Users\Huawei\AppData\Local\Microsoft\Edge\User Data\Default\History);Codex 会话目录已确认(C:\Users\Huawei\.codex\sessions,格式待环境恢复后校验);DSH 会话位置未确认(用户也未确定,待导出后指定)。**
+**已补充:Obsidian 插件骨架 obsidian/slime-mold-panel/(manifest/main/view/store-reader/构建配置)。**

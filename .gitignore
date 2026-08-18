@@ -17,6 +17,10 @@ out/
 *.slime-mold/
 slime-mold-data/
 **/index/embeddings.bin
+# 摄入管线写入的 vault 记忆数据(任务/日志/清单),代码与数据分离
+vault/slime-mold/tasks/
+vault/slime-mold/ingest-state.json
+vault/slime-mold/sm-config.json
 
 # Obsidian
 .obsidian/workspace.json
