@@ -74,9 +74,14 @@ export class TaskStoreWriter {
         continue;
       }
 
+      // 溯源优先:条目 agent/session_id 用源会话的真实值(Codex 会话是
+      // claude-code,DSH 会话是 dsh);options.agent/sessionId 仅在源缺失时兜底。
+      const sourceAgent = highlight.session.agent ?? options.agent;
+      const sourceSessionId = highlight.session.sessionId || options.sessionId;
+
       const connection: AuthenticatedConnection = {
-        agent: options.agent,
-        sessionId: options.sessionId,
+        agent: sourceAgent,
+        sessionId: sourceSessionId,
         taskId,
         confidence: options.confidence ?? highlight.confidence,
       };

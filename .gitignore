@@ -21,10 +21,18 @@ slime-mold-data/
 vault/slime-mold/tasks/
 vault/slime-mold/ingest-state.json
 vault/slime-mold/sm-config.json
+# 图谱节点为生成产物(scripts/emit-graph.mjs 可重建),不提交
+vault/菌落/
 
-# Obsidian
-.obsidian/workspace.json
-.obsidian/workspace-mobile.json
+# Obsidian 运行时配置(用户本地偏好,不提交;插件与 community-plugins.json 除外)
+vault/.obsidian/workspace.json
+vault/.obsidian/workspace-mobile.json
+vault/.obsidian/app.json
+vault/.obsidian/appearance.json
+vault/.obsidian/core-plugins.json
+vault/.obsidian/graph.json
+vault/.obsidian/hotkeys.json
+vault/.obsidian/daily-notes.json
 
 # OS
 .DS_Store

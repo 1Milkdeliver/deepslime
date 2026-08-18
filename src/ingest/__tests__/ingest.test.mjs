@@ -134,8 +134,9 @@ test("摄入管线:Codex + DSH + 缺省源 → 聚合 → 写入 TaskStore → s
   const opened = await store.open({ name: "整理项目周报" });
   assert.ok(opened.recentEntries.length >= 1);
   const first = opened.recentEntries[0];
-  assert.equal(first.agent, "dsh");
-  assert.equal(first.session_id, "ingest-test-1");
+  // 溯源优先:Codex 会话的条目 agent 来自源会话(claude-code),session_id 是源会话 id
+  assert.equal(first.agent, "claude-code");
+  assert.equal(first.session_id, "2026-08-17");
   assert.equal(first.layer, "draft");
   assert.match(first.id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 
@@ -144,6 +145,9 @@ test("摄入管线:Codex + DSH + 缺省源 → 聚合 → 写入 TaskStore → s
   const totalEntries =
     opened.recentEntries.length + dshOpened.recentEntries.length;
   assert.equal(totalEntries, result.entriesWritten);
+  // DSH 源会话的条目 agent 来自源会话(dsh),session_id 是源会话 id
+  assert.equal(dshOpened.recentEntries[0].agent, "dsh");
+  assert.equal(dshOpened.recentEntries[0].session_id, "session-abc123");
 
   // sm-config.json 覆盖诚实区
   const config = JSON.parse(
