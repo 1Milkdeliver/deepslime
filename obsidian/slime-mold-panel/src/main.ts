@@ -26,12 +26,15 @@ export default class SlimeMoldPanelPlugin extends Plugin {
   private async activateView(): Promise<void> {
     const { workspace } = this.app;
 
-    let leaf = workspace.getLeavesOfType(VIEW_TYPE)[0];
-    if (leaf === undefined) {
-      leaf = workspace.getRightLeaf(false);
-      if (leaf === null) return;
-      await leaf.setViewState({ type: VIEW_TYPE, active: true });
+    const existing = workspace.getLeavesOfType(VIEW_TYPE)[0];
+    if (existing !== undefined) {
+      await workspace.revealLeaf(existing);
+      return;
     }
+
+    const leaf = workspace.getRightLeaf(false);
+    if (leaf === null) return;
+    await leaf.setViewState({ type: VIEW_TYPE, active: true });
     await workspace.revealLeaf(leaf);
   }
 }
