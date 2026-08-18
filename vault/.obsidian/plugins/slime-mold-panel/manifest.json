@@ -1,0 +1,9 @@
+{
+  "id": "slime-mold-panel",
+  "name": "Slime Mold Provenance Panel",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "黏菌溯源面板:展示任务菌落与每条记忆的 agent/会话/时间/置信度来源",
+  "author": "slime-mold",
+  "isDesktopOnly": true
+}
