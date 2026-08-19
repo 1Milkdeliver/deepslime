@@ -1,6 +1,6 @@
-/* Slime Mold Provenance Panel — Obsidian theme-aware styles */
+/* DeepSlime Provenance Panel — Obsidian theme-aware styles */
 
-.slime-mold-panel {
+.deepslime-panel {
   padding: 16px 20px 32px;
   overflow-y: auto;
   font-size: var(--font-text-size);

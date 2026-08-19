@@ -2,7 +2,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-const VAULT = "D:/Deepseek Harness/slime-mold/vault";
+const VAULT = "D:/Deepseek Harness/deepslime/vault";
 
 const adapter = {
   async listDirectories(path) {

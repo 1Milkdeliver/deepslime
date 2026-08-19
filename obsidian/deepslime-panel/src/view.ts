@@ -8,7 +8,7 @@ import {
   type VaultAdapter,
 } from "./store-reader";
 
-export const VIEW_TYPE = "slime-mold-panel";
+export const VIEW_TYPE = "deepslime-panel";
 
 /** Obsidian Vault adapter 实现:把 vault 内路径映射到 adapter。 */
 function createVaultAdapter(vault: import("obsidian").Vault): VaultAdapter {
@@ -79,7 +79,7 @@ export class SlimeMoldPanelView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "黏菌 · 溯源面板";
+    return "DeepSlime · 溯源面板";
   }
 
   getIcon(): string {
@@ -89,7 +89,7 @@ export class SlimeMoldPanelView extends ItemView {
   async onOpen(): Promise<void> {
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
-    container.addClass("slime-mold-panel");
+    container.addClass("deepslime-panel");
 
     await this.render(container);
   }
@@ -104,7 +104,7 @@ export class SlimeMoldPanelView extends ItemView {
     // 顶栏:标题 + 刷新
     const header = container.createDiv({ cls: "sm-header" });
     const title = header.createDiv({ cls: "sm-title" });
-    title.createEl("h2", { text: "黏菌 · 溯源面板" });
+    title.createEl("h2", { text: "DeepSlime · 溯源面板" });
     const subtitle = title.createEl("div", { cls: "sm-subtitle" });
     subtitle.setText("会话可弃,记忆永存");
 

@@ -9,7 +9,7 @@
 $prompt = @'
 (任务描述)
 '@
-$prompt | codex exec -C "D:\Deepseek Harness\slime-mold" -s workspace-write --json -o "codex-reports/last-message.md"
+$prompt | codex exec -C "D:\Deepseek Harness\deepslime" -s workspace-write --json -o "codex-reports/last-message.md"
 ```
 
 ## 已踩的坑(2026-08-17)

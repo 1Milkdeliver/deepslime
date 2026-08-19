@@ -1,4 +1,4 @@
-# Slime Mold 接口契约(Codex 唯一依据)
+# DeepSlime 接口契约(Codex 唯一依据)
 
 > 由主会话从 SPEC.md 提取维护。Codex 会话只读本文件 + 自己目录,不读 SPEC.md。
 > 版本:v0.3(与 SPEC 同步)

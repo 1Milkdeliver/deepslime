@@ -8,13 +8,13 @@ export default class SlimeMoldPanelPlugin extends Plugin {
       (leaf: WorkspaceLeaf) => new SlimeMoldPanelView(leaf, this.app.vault),
     );
 
-    this.addRibbonIcon("network", "打开黏菌溯源面板", () => {
+    this.addRibbonIcon("network", "打开 DeepSlime 溯源面板", () => {
       this.activateView();
     });
 
     this.addCommand({
-      id: "open-slime-mold-panel",
-      name: "打开黏菌溯源面板",
+      id: "open-deepslime-panel",
+      name: "打开 DeepSlime 溯源面板",
       callback: () => this.activateView(),
     });
   }

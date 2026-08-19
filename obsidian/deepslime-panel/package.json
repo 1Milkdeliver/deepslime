@@ -1,7 +1,7 @@
 {
-  "name": "slime-mold-panel",
+  "name": "deepslime-panel",
   "version": "0.1.0",
-  "description": "Slime Mold provenance panel for Obsidian",
+  "description": "DeepSlime provenance panel for Obsidian",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
