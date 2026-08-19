@@ -103,3 +103,20 @@
 **环境状态:⚠️ pwsh/glob/grep 全部崩溃(0xC0000142),typecheck/测试待环境恢复后执行。**
 **数据源位置:Edge History 已确认(C:\Users\Huawei\AppData\Local\Microsoft\Edge\User Data\Default\History);Codex 会话目录已确认(C:\Users\Huawei\.codex\sessions,格式待环境恢复后校验);DSH 会话位置未确认(用户也未确定,待导出后指定)。**
 **已补充:Obsidian 插件骨架 obsidian/slime-mold-panel/(manifest/main/view/store-reader/构建配置)。**
+
+## 波 5(2026-08-18,加载协议 + 数据质量)
+
+| 模块 | 内容 | 目录 | 状态 |
+|---|---|---|---|
+| L1 任务清单 | list-tasks.mjs(新会话第一入口) | scripts/list-tasks.mjs | ✅ 验收通过 |
+| L2 记忆加载 | load-task.mjs(两级加载:brief 摘要/完整接续简报+溯源) | scripts/load-task.mjs | ✅ 验收通过 |
+| L3 随时记录 | record-note.mjs(provenance 服务端注入) | scripts/record-note.mjs | ✅ 验收通过 |
+| F1 溯源修正 | 条目 agent/session_id 按来源注入(Codex→claude-code,DSH→dsh) | src/ingest/writer.ts | ✅ 验收通过 |
+| F2 任务名清理 | 剥离零宽字符/双向控制符(U+200B-200F/2060-206F/202A-202E/FEFF) | aggregate.ts + fix-task-names.mjs | ✅ 19+17 存量修复,0 残留 |
+| F3 图谱生成 | emit-graph.mjs(任务/agent/主题 wikilink 节点,可重建) | scripts/emit-graph.mjs | ✅ 可用(Obsidian 可选) |
+| O2 面板样式 | Obsidian 面板美化(主题适配徽章/卡片) | obsidian/slime-mold-panel/ | ✅ 已部署 |
+
+**波 5 结论:** 用户确认**不需要 Obsidian**,核心诉求是"任何新会话随时加载任务记忆接续"。加载协议三脚本真实 vault 验证通过:
+`list-tasks → load-task(--brief/完整) → record-note` 闭环跑通。数据质量修复:agent 溯源正确(Codex 11,301 条 claude-code + DSH 1,013 条)、任务名零宽字符 0 残留。
+
+**里程碑:🏁 加载协议落地——会话可弃,记忆永存(新会话一条命令接上过往)**
