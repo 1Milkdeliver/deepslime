@@ -137,7 +137,7 @@ test("Edge 会话(无 agent)可聚合,observation 成为高光且不报错", () 
           seq: 0,
           timestamp: "2026-08-17T08:00:00.000Z",
           type: "observation",
-          text: "github.com/1Milkdeliver/slime-mold",
+          text: "github.com/1Milkdeliver/deepslime",
         },
       ],
     }),

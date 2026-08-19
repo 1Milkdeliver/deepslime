@@ -217,7 +217,7 @@ export async function runBench({ openSamples = OPEN_SAMPLES } = {}) {
     );
 
     return {
-      benchmark: "slime-mold SPEC section 7 (P0)",
+      benchmark: "deepslime SPEC section 7 (P0)",
       dataset: { tasks: TASK_COUNT, entriesPerTask: ENTRIES_PER_TASK, totalEntries: 30 },
       continuation,
       falseLoading,
@@ -238,7 +238,7 @@ if (isMainModule()) {
   runBench()
     .then((result) => console.log(JSON.stringify(result, null, 2)))
     .catch((error) => {
-      console.error(JSON.stringify({ benchmark: "slime-mold SPEC section 7 (P0)", passed: false }));
+      console.error(JSON.stringify({ benchmark: "deepslime SPEC section 7 (P0)", passed: false }));
       console.error(error instanceof Error ? error.stack : error);
       process.exitCode = 1;
     });
